@@ -1,17 +1,4 @@
 #!/bin/sh
-# Attempt to kill Python processes if the user has permissions
-kill_process() {
-  if [ "$(id -u)" -eq 0 ]; then
-    # Only attempt to kill processes if run by root (admin privileges)
-    pkill -9 Python
-    pkill -9 Python3
-    pkill -9 Python3.9
-    pkill -9 Python3.8
-    pkill -9 Python3.7
-  else
-    echo "Insufficient privileges to kill processes. You need admin access."
-  fi
-}
 
 # Get system information
 chip=$(arch)
@@ -58,6 +45,3 @@ cd src || { echo "Source directory not found"; exit 1; }
 runPython python3.7
 runPython python3.8
 runPython python3.9
-
-# Kill Python processes if the script has sufficient privileges
-kill_process
