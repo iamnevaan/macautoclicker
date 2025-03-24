@@ -1,6 +1,6 @@
 # macautoclicker
-a free mac auto clicker for all the people who want one.
-its built better with python
+a free mac auto clicker for all the people who want one. <br>
+Its built better with python
 
 # verify permissions
 
