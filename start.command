@@ -1,47 +1,26 @@
 #!/bin/sh
 
-# Get system information
-chip=$(arch)
-os_ver=$(sw_vers -productVersion)
+# Navigate to the directory where the script is located
+cd "$(dirname "$0")" || exit
 
-python_ver="3.9"
-if [ $chip = 'i386' ]; then
-    if echo -e "$os_ver \n10.15.0" | sort -V | tail -n1 | grep -Fq "10.15.0"; then
-        python_ver="3.7"
-        printf "Correct python ver: 3.7\n"
-    elif echo -e "$os_ver \n12.0.0" | sort -V | tail -n1 | grep -Fq "12.0.0"; then
-        python_ver="3.8"
-        printf "Correct python ver: 3.8\n"
-    fi
-fi
-
-cd "$(dirname "$0")"
-
-# Check if virtual environment directory exists before activating
+# Ensure the virtual environment is activated (if needed)
 if [ -d "bin" ]; then
-   if [ -f "./bin/activate" ]; then
-       source ./bin/activate
-       printf "Activating virtual environment...\n"
-   else
-       echo "Virtual environment not found in 'bin'."
-   fi
-else
-   echo "Virtual environment directory 'bin' does not exist."
+    if [ -f "./bin/activate" ]; then
+        source ./bin/activate
+        echo "Virtual environment activated."
+    else
+        echo "Virtual environment not found."
+    fi
 fi
 
-# Function to run Python script
-runPython() {
-    if command -v $1 >/dev/null 2>&1; then
-        $1 oac.py
-    else
-        echo "Python version $1 not found."
-    fi
-}
-
-# Navigate to source directory
-cd src || { echo "Source directory not found"; exit 1; }
-
-# Run different versions of Python if they exist
-runPython python3.7
-runPython python3.8
-runPython python3.9
+# Run Python script using an available Python version
+if command -v python3.9 >/dev/null 2>&1; then
+    python3.9 oac.py
+elif command -v python3.8 >/dev/null 2>&1; then
+    python3.8 oac.py
+elif command -v python3.7 >/dev/null 2>&1; then
+    python3.7 oac.py
+else
+    echo "No suitable Python version found!"
+    exit 1
+fi
