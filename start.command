@@ -11,16 +11,21 @@ if [ -d "bin" ]; then
     else
         echo "Virtual environment not found."
     fi
+else
+    echo "Virtual environment directory 'bin' does not exist."
 fi
 
-# Run Python script using an available Python version
-if command -v python3.9 >/dev/null 2>&1; then
-    python3.9 oac.py
-elif command -v python3.8 >/dev/null 2>&1; then
-    python3.8 oac.py
-elif command -v python3.7 >/dev/null 2>&1; then
-    python3.7 oac.py
-else
-    echo "No suitable Python version found!"
-    exit 1
-fi
+# Check if Python versions are available and run the script
+runPython() {
+    if command -v $1 >/dev/null 2>&1; then
+        echo "Running Python with $1"
+        $1 oac.py
+    else
+        echo "Python version $1 not found!"
+    fi
+}
+
+# Run Python with different versions if available
+runPython python3.9
+runPython python3.8
+runPython python3.7
