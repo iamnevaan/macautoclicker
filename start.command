@@ -1,31 +1,28 @@
-#!/bin/sh
+#!/bin/bash
 
-# Navigate to the directory where the script is located
-cd "$(dirname "$0")" || exit
+# Exit on error
+set -e
 
-# Ensure the virtual environment is activated (if needed)
-if [ -d "bin" ]; then
-    if [ -f "./bin/activate" ]; then
-        source ./bin/activate
-        echo "Virtual environment activated."
-    else
-        echo "Virtual environment not found."
-    fi
-else
-    echo "Virtual environment directory 'bin' does not exist."
-fi
+# Navigate to the script's directory
+cd "$(dirname "$0")" || exit 1
 
-# Check if Python versions are available and run the script
+# Ensure the script is executable
+chmod +x ./oac.py
+
+# Check if Python 3.7, 3.8, or 3.9 are installed, and select the first available
 runPython() {
     if command -v $1 >/dev/null 2>&1; then
-        echo "Running Python with $1"
-        $1 oac.py
-    else
-        echo "Python version $1 not found!"
+        echo "Running oac.py with $1"
+        $1 ./oac.py
+        exit 0
     fi
 }
 
-# Run Python with different versions if available
+# Run Python with different versions (in order)
 runPython python3.9
 runPython python3.8
 runPython python3.7
+
+# If no Python version is found, report an error
+echo "Error: No suitable Python version found. Please install Python 3.7, 3.8, or 3.9."
+exit 1
