@@ -4,7 +4,7 @@ import tkinter as tk
 import json
 from pynput.mouse import Button, Controller
 from pynput.keyboard import Listener, KeyCode
-from tkinter import PhotoImage
+from PIL import Image, ImageTk
 import os 
 
 # Initialize mouse controller
