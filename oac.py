@@ -7,21 +7,28 @@ from pynput.keyboard import Listener, Key, KeyCode
 from PIL import Image, ImageTk
 import os
 
-# Initialize mouse controller
 mouse = Controller()
-
-# Default settings
 settings_file = "clicker_settings.json"
 clicking = False
-click_interval = 0.01  # Default click speed
-hotkey_char = "f6"  # Default hotkey as string
-hotkey = KeyCode.from_char(hotkey_char.lower())  # Convert to pynput format
+click_interval = 0.01
+hotkey_char = "f6"
 waiting_for_hotkey = False
 
+special_keys = {
+    "f1": Key.f1, "f2": Key.f2, "f3": Key.f3, "f4": Key.f4,
+    "f5": Key.f5, "f6": Key.f6, "f7": Key.f7, "f8": Key.f8,
+    "f9": Key.f9, "f10": Key.f10, "f11": Key.f11, "f12": Key.f12,
+    "shift": Key.shift, "ctrl": Key.ctrl, "alt": Key.alt, "cmd": Key.cmd,
+}
+
+def get_hotkey(hotkey_char):
+    return special_keys.get(hotkey_char.lower(), KeyCode.from_char(hotkey_char.lower()))
+
+hotkey = get_hotkey(hotkey_char)
+
 def save_settings():
-    settings = {"hotkey": hotkey_char, "click_interval": click_interval}
     with open(settings_file, "w") as f:
-        json.dump(settings, f)
+        json.dump({"hotkey": hotkey_char, "click_interval": click_interval}, f)
 
 def load_settings():
     global hotkey, click_interval, hotkey_char
@@ -31,9 +38,9 @@ def load_settings():
             hotkey_char = settings["hotkey"]
             click_interval = float(settings["click_interval"])
             hotkey_label.config(text=f"Hotkey: {hotkey_char.upper()}")
-            hotkey = KeyCode.from_char(hotkey_char.lower())
             interval_entry.delete(0, tk.END)
             interval_entry.insert(0, str(click_interval))
+            hotkey = get_hotkey(hotkey_char)
     except (FileNotFoundError, ValueError, KeyError):
         pass
 
@@ -78,7 +85,7 @@ def update_hotkey(key):
         hotkey_char = key.name
 
     hotkey_label.config(text=f"Hotkey: {hotkey_char.upper()}")
-    hotkey = KeyCode.from_char(hotkey_char.lower()) if hotkey_char.isalnum() else key
+    hotkey = get_hotkey(hotkey_char)
     waiting_for_hotkey = False
     save_settings()
 
@@ -91,17 +98,15 @@ def update_interval(event):
         pass
 
 def unified_listener(key):
-    global waiting_for_hotkey
     if waiting_for_hotkey:
         update_hotkey(key)
     else:
         on_press(key)
 
-# GUI Setup
+# GUI
 root = tk.Tk()
 root.title("Auto Clicker")
 
-# Set window icon
 file_path = os.path.dirname(os.path.abspath(__file__))
 icon_path = os.path.join(file_path, "icon.png")
 
@@ -110,36 +115,24 @@ if os.path.exists(icon_path):
     icon = ImageTk.PhotoImage(img)
     root.iconphoto(True, icon)
 
-# Status Label
 status_label = tk.Label(root, text="Stopped.", fg="red", font=("Arial", 12, "bold"))
 status_label.grid(row=0, column=0, columnspan=2)
 
-# Hotkey selection
 hotkey_label = tk.Label(root, text=f"Hotkey: {hotkey_char.upper()}")
 hotkey_label.grid(row=1, column=0)
 hotkey_button = tk.Button(root, text="Set Hotkey", command=select_hotkey)
 hotkey_button.grid(row=1, column=1)
 
-# Click Interval input
 tk.Label(root, text="Click Interval (seconds):").grid(row=2, column=0)
 interval_entry = tk.Entry(root)
 interval_entry.grid(row=2, column=1)
 interval_entry.bind("<KeyRelease>", update_interval)
 
-# Buttons
-start_button = tk.Button(root, text="Start", command=start_clicking)
-start_button.grid(row=3, column=0)
+tk.Button(root, text="Start", command=start_clicking).grid(row=3, column=0)
+tk.Button(root, text="Stop", command=stop_clicking).grid(row=3, column=1)
+tk.Button(root, text="Quit", command=quit_app).grid(row=4, column=0, columnspan=2)
 
-stop_button = tk.Button(root, text="Stop", command=stop_clicking)
-stop_button.grid(row=3, column=1)
-
-quit_button = tk.Button(root, text="Quit", command=quit_app)
-quit_button.grid(row=4, column=0, columnspan=2)
-
-# Load settings on startup
 load_settings()
-
-# Single unified listener
 listener = Listener(on_press=unified_listener)
 listener.start()
 
