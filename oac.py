@@ -5,7 +5,7 @@ import json
 from pynput.mouse import Button, Controller
 from pynput.keyboard import Listener, KeyCode
 from PIL import Image, ImageTk
-import os 
+import os
 
 # Initialize mouse controller
 mouse = Controller()
@@ -15,28 +15,29 @@ settings_file = "clicker_settings.json"
 clicking = False
 click_interval = 0.01  # Default click speed
 hotkey = KeyCode.from_char('f6')  # Default hotkey
+waiting_for_hotkey = False
 
 def save_settings():
     """Save hotkey and interval settings."""
     settings = {
-        "hotkey": hotkey_entry.get(),
-        "click_interval": interval_entry.get()
+        "hotkey": hotkey_char,
+        "click_interval": click_interval
     }
     with open(settings_file, "w") as f:
         json.dump(settings, f)
 
 def load_settings():
     """Load settings from file."""
-    global hotkey, click_interval
+    global hotkey, click_interval, hotkey_char
     try:
         with open(settings_file, "r") as f:
             settings = json.load(f)
-            hotkey_entry.delete(0, tk.END)
-            hotkey_entry.insert(0, settings["hotkey"])
-            interval_entry.delete(0, tk.END)
-            interval_entry.insert(0, settings["click_interval"])
-            hotkey = KeyCode.from_char(settings["hotkey"].lower())
+            hotkey_char = settings["hotkey"]
             click_interval = float(settings["click_interval"])
+            hotkey_label.config(text=f"Hotkey: {hotkey_char}")
+            hotkey = KeyCode.from_char(hotkey_char.lower())
+            interval_entry.delete(0, tk.END)
+            interval_entry.insert(0, str(click_interval))
     except (FileNotFoundError, ValueError, KeyError):
         pass
 
@@ -72,14 +73,21 @@ def quit_app():
     stop_clicking()
     root.quit()
 
-def update_hotkey(event):
-    """Update hotkey entry when a key is pressed."""
-    global hotkey
-    key = event.keysym
-    hotkey_entry.delete(0, tk.END)
-    hotkey_entry.insert(0, key.upper())
-    hotkey = KeyCode.from_char(key.lower())  # Update hotkey
-    save_settings()
+def select_hotkey():
+    """Enable hotkey selection mode."""
+    global waiting_for_hotkey
+    waiting_for_hotkey = True
+    hotkey_label.config(text="Press any key...")
+
+def update_hotkey(key):
+    """Set the selected key as the hotkey."""
+    global hotkey, hotkey_char, waiting_for_hotkey
+    if waiting_for_hotkey:
+        hotkey_char = key.char if hasattr(key, 'char') and key.char else key.name
+        hotkey_label.config(text=f"Hotkey: {hotkey_char.upper()}")
+        hotkey = KeyCode.from_char(hotkey_char.lower())
+        waiting_for_hotkey = False
+        save_settings()
 
 def update_interval(event):
     """Update click interval when input changes."""
@@ -112,10 +120,10 @@ status_label = tk.Label(root, text="Stopped.", fg="red", font=("Arial", 12, "bol
 status_label.grid(row=0, column=0, columnspan=2)
 
 # Hotkey selection
-tk.Label(root, text="Hotkey:").grid(row=1, column=0)
-hotkey_entry = tk.Entry(root, width=10)
-hotkey_entry.grid(row=1, column=1)
-hotkey_entry.bind("<KeyPress>", update_hotkey)  # Auto-update hotkey
+hotkey_label = tk.Label(root, text="Hotkey: F6")
+hotkey_label.grid(row=1, column=0)
+hotkey_button = tk.Button(root, text="Set Hotkey", command=select_hotkey)
+hotkey_button.grid(row=1, column=1)
 
 # Click Interval input
 tk.Label(root, text="Click Interval (seconds):").grid(row=2, column=0)
@@ -134,10 +142,11 @@ quit_button = tk.Button(root, text="Quit", command=quit_app)
 quit_button.grid(row=4, column=0, columnspan=2)
 
 # Load settings on startup
+hotkey_char = "f6"  # Default hotkey character
 load_settings()
 
 # Start keyboard listener
-listener = Listener(on_press=on_press)
+listener = Listener(on_press=update_hotkey)
 listener.start()
 
 root.mainloop()
