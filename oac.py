@@ -19,16 +19,11 @@ hotkey = KeyCode.from_char(hotkey_char.lower())  # Convert to pynput format
 waiting_for_hotkey = False
 
 def save_settings():
-    """Save hotkey and interval settings."""
-    settings = {
-        "hotkey": hotkey_char,
-        "click_interval": click_interval
-    }
+    settings = {"hotkey": hotkey_char, "click_interval": click_interval}
     with open(settings_file, "w") as f:
         json.dump(settings, f)
 
 def load_settings():
-    """Load settings from file."""
     global hotkey, click_interval, hotkey_char
     try:
         with open(settings_file, "r") as f:
@@ -43,72 +38,70 @@ def load_settings():
         pass
 
 def start_clicking():
-    """Start auto-clicking in a separate thread."""
     global clicking
     clicking = True
     status_label.config(text="Clicking...", fg="green")
     threading.Thread(target=click_loop, daemon=True).start()
 
 def stop_clicking():
-    """Stop auto-clicking."""
     global clicking
     clicking = False
     status_label.config(text="Stopped.", fg="red")
 
 def click_loop():
-    """Click repeatedly while clicking is True."""
     while clicking:
         mouse.click(Button.left)
         time.sleep(click_interval)
 
 def on_press(key):
-    """Handle key presses to start/stop clicking."""
     global clicking
-    if not waiting_for_hotkey and key == hotkey:
+    if key == hotkey:
         if clicking:
             stop_clicking()
         else:
             start_clicking()
 
 def quit_app():
-    """Stop clicking and quit the app."""
     stop_clicking()
     root.quit()
 
 def select_hotkey():
-    """Enable hotkey selection mode."""
     global waiting_for_hotkey
     waiting_for_hotkey = True
     hotkey_label.config(text="Press any key...")
 
 def update_hotkey(key):
-    """Set the selected key as the hotkey."""
     global hotkey, hotkey_char, waiting_for_hotkey
-    if waiting_for_hotkey:
-        if isinstance(key, KeyCode):
-            hotkey_char = key.char if key.char else key.name  # Get key name
-        elif isinstance(key, Key):
-            hotkey_char = key.name  # Special keys (e.g., space, enter)
+    if isinstance(key, KeyCode):
+        hotkey_char = key.char if key.char else key.name
+    elif isinstance(key, Key):
+        hotkey_char = key.name
 
-        hotkey_label.config(text=f"Hotkey: {hotkey_char.upper()}")
-        hotkey = KeyCode.from_char(hotkey_char.lower()) if hotkey_char.isalnum() else key
-        waiting_for_hotkey = False
-        save_settings()
+    hotkey_label.config(text=f"Hotkey: {hotkey_char.upper()}")
+    hotkey = KeyCode.from_char(hotkey_char.lower()) if hotkey_char.isalnum() else key
+    waiting_for_hotkey = False
+    save_settings()
 
 def update_interval(event):
-    """Update click interval when input changes."""
     global click_interval
     try:
         click_interval = float(interval_entry.get())
         save_settings()
     except ValueError:
-        pass  # Ignore invalid input
+        pass
+
+def unified_listener(key):
+    global waiting_for_hotkey
+    if waiting_for_hotkey:
+        update_hotkey(key)
+    else:
+        on_press(key)
 
 # GUI Setup
 root = tk.Tk()
 root.title("Auto Clicker")
 
-# Set the window icon (ensure icon.png exists)
+# Set window icon
 file_path = os.path.dirname(os.path.abspath(__file__))
 icon_path = os.path.join(file_path, "icon.png")
 
@@ -131,7 +124,7 @@ hotkey_button.grid(row=1, column=1)
 tk.Label(root, text="Click Interval (seconds):").grid(row=2, column=0)
 interval_entry = tk.Entry(root)
 interval_entry.grid(row=2, column=1)
-interval_entry.bind("<KeyRelease>", update_interval)  # Auto-update interval
+interval_entry.bind("<KeyRelease>", update_interval)
 
 # Buttons
 start_button = tk.Button(root, text="Start", command=start_clicking)
@@ -146,11 +139,8 @@ quit_button.grid(row=4, column=0, columnspan=2)
 # Load settings on startup
 load_settings()
 
-# Start two listeners: one for normal hotkey, one for selecting hotkey
-hotkey_listener = Listener(on_press=on_press)
-hotkey_listener.start()
-
-hotkey_select_listener = Listener(on_press=update_hotkey)
-hotkey_select_listener.start()
+# Single unified listener
+listener = Listener(on_press=unified_listener)
+listener.start()
 
 root.mainloop()
