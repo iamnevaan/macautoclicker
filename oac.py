@@ -3,7 +3,7 @@ import threading
 import tkinter as tk
 import json
 from pynput.mouse import Button, Controller
-from pynput.keyboard import Listener, KeyCode
+from pynput.keyboard import Listener, Key, KeyCode
 from PIL import Image, ImageTk
 import os
 
@@ -14,7 +14,8 @@ mouse = Controller()
 settings_file = "clicker_settings.json"
 clicking = False
 click_interval = 0.01  # Default click speed
-hotkey = KeyCode.from_char('f6')  # Default hotkey
+hotkey_char = "f6"  # Default hotkey as string
+hotkey = KeyCode.from_char(hotkey_char.lower())  # Convert to pynput format
 waiting_for_hotkey = False
 
 def save_settings():
@@ -34,7 +35,7 @@ def load_settings():
             settings = json.load(f)
             hotkey_char = settings["hotkey"]
             click_interval = float(settings["click_interval"])
-            hotkey_label.config(text=f"Hotkey: {hotkey_char}")
+            hotkey_label.config(text=f"Hotkey: {hotkey_char.upper()}")
             hotkey = KeyCode.from_char(hotkey_char.lower())
             interval_entry.delete(0, tk.END)
             interval_entry.insert(0, str(click_interval))
@@ -62,7 +63,8 @@ def click_loop():
 
 def on_press(key):
     """Handle key presses to start/stop clicking."""
-    if key == hotkey:
+    global clicking
+    if not waiting_for_hotkey and key == hotkey:
         if clicking:
             stop_clicking()
         else:
@@ -83,9 +85,13 @@ def update_hotkey(key):
     """Set the selected key as the hotkey."""
     global hotkey, hotkey_char, waiting_for_hotkey
     if waiting_for_hotkey:
-        hotkey_char = key.char if hasattr(key, 'char') and key.char else key.name
+        if isinstance(key, KeyCode):
+            hotkey_char = key.char if key.char else key.name  # Get key name
+        elif isinstance(key, Key):
+            hotkey_char = key.name  # Special keys (e.g., space, enter)
+
         hotkey_label.config(text=f"Hotkey: {hotkey_char.upper()}")
-        hotkey = KeyCode.from_char(hotkey_char.lower())
+        hotkey = KeyCode.from_char(hotkey_char.lower()) if hotkey_char.isalnum() else key
         waiting_for_hotkey = False
         save_settings()
 
@@ -102,25 +108,21 @@ def update_interval(event):
 root = tk.Tk()
 root.title("Auto Clicker")
 
-# Get the file path to the icon
+# Set the window icon (ensure icon.png exists)
 file_path = os.path.dirname(os.path.abspath(__file__))
 icon_path = os.path.join(file_path, "icon.png")
 
-# Open the image using PIL
-img = Image.open(icon_path)
-
-# Convert the image to PhotoImage
-icon = ImageTk.PhotoImage(img)
-
-# Set the icon for the window
-root.iconphoto(True, icon)
+if os.path.exists(icon_path):
+    img = Image.open(icon_path)
+    icon = ImageTk.PhotoImage(img)
+    root.iconphoto(True, icon)
 
 # Status Label
 status_label = tk.Label(root, text="Stopped.", fg="red", font=("Arial", 12, "bold"))
 status_label.grid(row=0, column=0, columnspan=2)
 
 # Hotkey selection
-hotkey_label = tk.Label(root, text="Hotkey: F6")
+hotkey_label = tk.Label(root, text=f"Hotkey: {hotkey_char.upper()}")
 hotkey_label.grid(row=1, column=0)
 hotkey_button = tk.Button(root, text="Set Hotkey", command=select_hotkey)
 hotkey_button.grid(row=1, column=1)
@@ -142,11 +144,13 @@ quit_button = tk.Button(root, text="Quit", command=quit_app)
 quit_button.grid(row=4, column=0, columnspan=2)
 
 # Load settings on startup
-hotkey_char = "f6"  # Default hotkey character
 load_settings()
 
-# Start keyboard listener
-listener = Listener(on_press=update_hotkey)
-listener.start()
+# Start two listeners: one for normal hotkey, one for selecting hotkey
+hotkey_listener = Listener(on_press=on_press)
+hotkey_listener.start()
+
+hotkey_select_listener = Listener(on_press=update_hotkey)
+hotkey_select_listener.start()
 
 root.mainloop()
